@@ -1,0 +1,18 @@
+# Local plugin: shows the hyprland.lua SUPER+F1..F4 quick-launch slot
+# assignments in the bar, highlights the focused one, and lets you click
+# a slot to focus/launch it.
+
+id = "dominik/quicklaunch"
+name = "Quick Launch"
+version = "1.0.0"
+plugin_api = 9
+author = "dominik"
+license = "MIT"
+dependencies = []
+tags = ["hyprland", "launcher"]
+icon = "bolt"
+description = "Shows the SUPER+F1..F4 quick-launch slots and lets you click one to focus or launch it."
+
+[[widget]]
+id = "quicklaunch"
+entry = "quicklaunch.luau"
