@@ -61,12 +61,24 @@ end
 -- Same focus-or-launch logic as the SUPER+F{n} keybind in hyprland.lua,
 -- issued through `hyprctl eval` since this plugin runs outside Hyprland's
 -- own Lua state.
+-- Mirrors the SUPER+F{n} bind's cycling behavior: with multiple windows of
+-- this class open, each click steps to the next one after whatever is
+-- currently focused (wrapping around); with one, it just focuses it.
 local function focusOrLaunchCmd(class)
   local classLit = luaStringLiteral(class)
-  local script = "local w = hl.get_window(\"class:^(\" .. "
-    .. classLit
-    .. " .. \")$\") if w then hl.dispatch(hl.dsp.focus({ window = w })) "
-    .. "else hl.dispatch(hl.dsp.exec_cmd(" .. classLit .. ")) end"
+  local script = "local class = " .. classLit .. " "
+    .. "local matches = {} "
+    .. "for _, w in ipairs(hl.get_windows()) do if w.class == class then matches[#matches + 1] = w end end "
+    .. "if #matches == 0 then hl.dispatch(hl.dsp.exec_cmd(class)) "
+    .. "elseif #matches == 1 then hl.dispatch(hl.dsp.focus({ window = matches[1] })) "
+    .. "else "
+    .. "local active = hl.get_active_window() "
+    .. "local activeAddr = active and active.address "
+    .. "local currentIndex = nil "
+    .. "for i, w in ipairs(matches) do if w.address == activeAddr then currentIndex = i break end end "
+    .. "local nextIndex = currentIndex and (currentIndex % #matches) + 1 or 1 "
+    .. "hl.dispatch(hl.dsp.focus({ window = matches[nextIndex] })) "
+    .. "end"
   return "hyprctl eval " .. shellQuote(script)
 end
 

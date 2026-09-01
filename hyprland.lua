@@ -284,19 +284,46 @@ hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))    -- dwindle only
 
 -- Quick-launch: SUPER+F1..F4 switches to the assigned app, or launches it if it isn't running.
+-- With multiple windows of that app open, repeated presses cycle through them.
 -- SUPER+SHIFT+F1..F4 (re)assigns that slot to the currently active app.
+local function windowsOfClass(class)
+    local matches = {}
+    for _, w in ipairs(hl.get_windows()) do
+        if w.class == class then matches[#matches + 1] = w end
+    end
+    return matches
+end
+
 for n = 1, 4 do
     local key = "F" .. n
 
     hl.bind(mainMod .. " + " .. key, function ()
         local class = quickApps[n]
         if not class then return end
-        local w = hl.get_window("class:^(" .. class .. ")$")
-        if w then
-            hl.dispatch(hl.dsp.focus({ window = w }))
-        else
+
+        local matches = windowsOfClass(class)
+        if #matches == 0 then
             hl.dispatch(hl.dsp.exec_cmd(class))
+            return
         end
+        if #matches == 1 then
+            hl.dispatch(hl.dsp.focus({ window = matches[1] }))
+            return
+        end
+
+        -- Multiple windows of this class: cycle to the next one after
+        -- whichever is currently focused (wraps around); otherwise focus the first.
+        local active = hl.get_active_window()
+        local activeAddr = active and active.address
+        local currentIndex = nil
+        for i, w in ipairs(matches) do
+            if w.address == activeAddr then
+                currentIndex = i
+                break
+            end
+        end
+        local nextIndex = currentIndex and (currentIndex % #matches) + 1 or 1
+        hl.dispatch(hl.dsp.focus({ window = matches[nextIndex] }))
     end)
 
     hl.bind(mainMod .. " + SHIFT + " .. key, function ()
