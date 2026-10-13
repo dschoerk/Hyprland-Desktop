@@ -7,18 +7,39 @@
 -- require("myColors")
 
 
+--------------
+---- HOST ----
+--------------
+
+-- Machine-specific parts (monitors, autostart, a few binds) live in
+-- hosts/<name>.lua, picked by hostname. Each file returns a table with
+-- optional monitors(), config(), autostart() and binds(mainMod, ipc) hooks.
+-- Unknown hostnames fall back to the desktop file.
+local hostFiles = {
+    ["dominik-thinkpad"] = "laptop",
+}
+
+local hostname = ""
+do
+    local f = io.open("/etc/hostname", "r")
+    if f then
+        hostname = f:read("*l") or ""
+        f:close()
+    end
+end
+
+local host = dofile(os.getenv("HOME") .. "/.config/hypr/hosts/" .. (hostFiles[hostname] or "desktop") .. ".lua")
+local function hostHook(name, ...)
+    if host[name] then host[name](...) end
+end
+
+
 ------------------
 ---- MONITORS ----
 ------------------
 
 -- See https://wiki.hypr.land/Configuring/Basics/Monitors/
--- Built-in laptop panel; "preferred" would pick its 60 Hz mode
-hl.monitor({
-    output   = "eDP-1",
-    mode     = "2880x1800@120.00",
-    position = "0x0",
-    scale    = 2,
-})
+hostHook("monitors")
 
 -- Fallback for any other/future monitor
 hl.monitor({
@@ -77,13 +98,10 @@ end
 --   hl.exec_cmd("waybar & hyprpaper & firefox")
 -- end)
 
--- ksecretd is already started by PAM at login, and Noctalia handles
--- notifications and the wallpaper, so no mako/hyprpaper here.
+-- Noctalia also handles the wallpaper; polkit agent etc. are per host.
 hl.on("hyprland.start", function ()
   hl.exec_cmd("noctalia")
-  -- Polkit authentication agent; without it polkitd has no way to prompt,
-  -- so privileged actions fail. hyprpolkitagent isn't packaged on Ubuntu.
-  hl.exec_cmd("/usr/lib/x86_64-linux-gnu/libexec/polkit-kde-authentication-agent-1")
+  hostHook("autostart")
 end)
 
 
@@ -284,6 +302,9 @@ hl.config({
     },
 })
 
+-- Host overrides for any of the above (gaps, vrr, ...)
+hostHook("config")
+
 
 ---------------
 ---- INPUT ----
@@ -339,8 +360,7 @@ hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 
--- Screenshot: select a region, annotate in swappy, upload to Nextcloud and copy share link
-hl.bind("PRINT", hl.dsp.exec_cmd("$HOME/.local/bin/screenshot-share.sh"))
+-- Region screenshot (Print) is per host, see hosts/*.lua
 -- Monitor screenshots (noctalia built-in, saves to ~/Pictures)
 hl.bind("SHIFT + Print", hl.dsp.exec_cmd(ipc .. "screenshot-fullscreen"))
 hl.bind("CTRL + Print",  hl.dsp.exec_cmd(ipc .. "screenshot-fullscreen all"))
@@ -526,6 +546,9 @@ hl.bind("XF86AudioNext",  hl.dsp.exec_cmd(ipc .. "media next"),     { locked = t
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd(ipc .. "media toggle"),   { locked = true })
 hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd(ipc .. "media toggle"),   { locked = true })
 hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd(ipc .. "media previous"), { locked = true })
+
+-- Host-specific binds
+hostHook("binds", mainMod, ipc)
 
 
 --------------------------------
