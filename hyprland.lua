@@ -12,6 +12,15 @@
 ------------------
 
 -- See https://wiki.hypr.land/Configuring/Basics/Monitors/
+-- Built-in laptop panel; "preferred" would pick its 60 Hz mode
+hl.monitor({
+    output   = "eDP-1",
+    mode     = "2880x1800@120.00",
+    position = "0x0",
+    scale    = 2,
+})
+
+-- Fallback for any other/future monitor
 hl.monitor({
     output   = "",
     mode     = "preferred",
@@ -68,8 +77,13 @@ end
 --   hl.exec_cmd("waybar & hyprpaper & firefox")
 -- end)
 
+-- ksecretd is already started by PAM at login, and Noctalia handles
+-- notifications and the wallpaper, so no mako/hyprpaper here.
 hl.on("hyprland.start", function ()
   hl.exec_cmd("noctalia")
+  -- Polkit authentication agent; without it polkitd has no way to prompt,
+  -- so privileged actions fail. hyprpolkitagent isn't packaged on Ubuntu.
+  hl.exec_cmd("/usr/lib/x86_64-linux-gnu/libexec/polkit-kde-authentication-agent-1")
 end)
 
 
@@ -148,6 +162,30 @@ hl.config({
             size     = 3,
             passes   = 1,
             vibrancy = 0.1696,
+
+            -- Blur whatever is behind the special workspace, so it reads
+            -- as an overlay floating above the normal workspace.
+            special  = true,
+        },
+
+        -- How much to dim the workspace underneath while the special
+        -- workspace is open. Default is 0.2; higher = more separation.
+        dim_special = 0.4,
+
+        -- Native inner glow (Hyprland 0.56+). NOTE: this is global -- there
+        -- is no no_glow window rule, so it cannot be limited to the special
+        -- workspace. It also glows *inward* from the window edge rather than
+        -- haloing outward into the gaps.
+        glow = {
+            enabled      = true,
+            range        = 10,
+            render_power = 3,
+
+            -- Matches the active border gradient above.
+            color          = { colors = {"rgba(33ccffee)", "rgba(00ff99ee)"}, angle = 45 },
+            -- Default for this is opaque white, which rims every unfocused
+            -- window. Transparent = only the focused window glows.
+            color_inactive = "rgba(00000000)",
         },
     },
 
@@ -185,6 +223,11 @@ hl.animation({ leaf = "workspacesOut", enabled = true, speed = 1.94, bezier = "a
 hl.animation({ leaf = "zoomFactor",    enabled = true, speed = 7,    bezier = "quick" })
 
 -- Ref https://wiki.hypr.land/Configuring/Basics/Workspace-Rules/
+-- Inset the special workspace with large outer gaps for the "floating panel"
+-- look. This replaces special_scale_factor < 1, which scales every window
+-- around its own tile centre and so also blows up the gaps between windows.
+hl.workspace_rule({ workspace = "s[true]", gaps_out = 30 })
+
 -- "Smart gaps" / "No gaps when only"
 -- uncomment all if you wish to use that.
 -- hl.workspace_rule({ workspace = "w[tv1]", gaps_out = 0, gaps_in = 0 })
@@ -206,6 +249,9 @@ hl.animation({ leaf = "zoomFactor",    enabled = true, speed = 7,    bezier = "q
 hl.config({
     dwindle = {
         preserve_split = true, -- You probably want this
+
+        -- Keep at 1: the inset look comes from the s[true] gaps_out rule.
+        special_scale_factor = 1,
     },
 })
 
@@ -213,6 +259,16 @@ hl.config({
 hl.config({
     master = {
         new_status = "master",
+
+        -- Mirror the dwindle setting (see the s[true] gaps_out rule).
+        special_scale_factor = 1,
+    },
+})
+
+-- See https://wiki.hypr.land/Configuring/Layouts/Scrolling-Layout/ for more
+hl.config({
+    scrolling = {
+        fullscreen_on_one_column = true,
     },
 })
 
@@ -223,7 +279,7 @@ hl.config({
 
 hl.config({
     misc = {
-        force_default_wallpaper = -1,    -- Set to 0 or 1 to disable the anime mascot wallpapers
+        force_default_wallpaper = 0,     -- Set to 0 or 1 to disable the anime mascot wallpapers
         disable_hyprland_logo   = false, -- If true disables the random hyprland logo / anime girl background. :(
     },
 })
@@ -242,6 +298,8 @@ hl.config({
         kb_rules   = "",
 
         follow_mouse = 1,
+
+        numlock_by_default = true,
 
         sensitivity = 0, -- -1.0 - 1.0, 0 means no modification.
 
@@ -281,7 +339,39 @@ hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 
-hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))    -- dwindle only
+-- Screenshot: select a region, annotate in swappy, upload to Nextcloud and copy share link
+hl.bind("PRINT", hl.dsp.exec_cmd("$HOME/.local/bin/screenshot-share.sh"))
+-- Monitor screenshots (noctalia built-in, saves to ~/Pictures)
+hl.bind("SHIFT + Print", hl.dsp.exec_cmd(ipc .. "screenshot-fullscreen"))
+hl.bind("CTRL + Print",  hl.dsp.exec_cmd(ipc .. "screenshot-fullscreen all"))
+
+-- Screen recording (gpu-screen-recorder); the same key stops and saves.
+hl.bind("ALT + Print",         hl.dsp.exec_cmd("sh " .. os.getenv("HOME") .. "/.config/hypr/scripts/record-toggle.sh"))
+hl.bind("ALT + SHIFT + Print", hl.dsp.exec_cmd("sh " .. os.getenv("HOME") .. "/.config/hypr/scripts/record-toggle.sh region"))
+
+hl.bind(mainMod .. " + T", hl.dsp.layout("togglesplit"))    -- dwindle only (J is vim-down)
+
+-- Cycle the global tiling layout. Note that `hyprctl keyword` does NOT work
+-- with the Lua parser ("keyword can't work with non-legacy parsers"), so the
+-- usual exec-based approach from the wiki is out; we set config directly.
+local layouts = { "dwindle", "master", "scrolling" }
+
+hl.bind(mainMod .. " + SHIFT + T", function()
+    -- Read the live value rather than tracking an index, so this stays
+    -- correct across config reloads.
+    local current = hl.get_config("general.layout")
+    local nextIndex = 1
+    for i, name in ipairs(layouts) do
+        if name == current then
+            nextIndex = i % #layouts + 1
+            break
+        end
+    end
+
+    local target = layouts[nextIndex]
+    hl.config({ general = { layout = target } })
+    hl.notification.create({ text = "Layout: " .. target, timeout = 1500 })
+end)
 
 -- Quick-launch: SUPER+F1..F4 switches to the assigned app, or launches it if it isn't running.
 -- With multiple windows of that app open, repeated presses cycle through them.
@@ -346,6 +436,13 @@ hl.bind(mainMod .. " + SHIFT + right", hl.dsp.window.move({ direction = "right" 
 hl.bind(mainMod .. " + SHIFT + up",    hl.dsp.window.move({ direction = "up" }))
 hl.bind(mainMod .. " + SHIFT + down",  hl.dsp.window.move({ direction = "down" }))
 
+-- Vim-style equivalents: mainMod (+ SHIFT) + H/J/K/L
+local vimKeys = { H = "left", J = "down", K = "up", L = "right" }
+for key, direction in pairs(vimKeys) do
+    hl.bind(mainMod .. " + " .. key,         hl.dsp.focus({ direction = direction }))
+    hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ direction = direction }))
+end
+
 -- Switch workspaces with mainMod + [0-9]
 -- Move active window to a workspace with mainMod + SHIFT + [0-9]
 for i = 1, 10 do
@@ -353,6 +450,32 @@ for i = 1, 10 do
     hl.bind(mainMod .. " + " .. key,         hl.dsp.focus({ workspace = i }))
     hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
 end
+
+-- Same workspace switching, but reachable from the numpad.
+-- Bound to both the digit keysyms (Num Lock on) and the navigation
+-- keysyms the same physical keys send with Num Lock off, so it works
+-- regardless of Num Lock state.
+local numpadKeysyms = {
+    [1] = "KP_1",   [2] = "KP_2",  [3] = "KP_3",
+    [4] = "KP_4",   [5] = "KP_5",  [6] = "KP_6",
+    [7] = "KP_7",   [8] = "KP_8",  [9] = "KP_9",
+    [0] = "KP_0",
+}
+local numpadNavKeysyms = {
+    [1] = "KP_End",    [2] = "KP_Down",  [3] = "KP_Next",
+    [4] = "KP_Left",   [5] = "KP_Begin", [6] = "KP_Right",
+    [7] = "KP_Home",   [8] = "KP_Up",    [9] = "KP_Prior",
+    [0] = "KP_Insert",
+}
+for i = 1, 9 do
+    hl.bind(mainMod .. " + " .. numpadKeysyms[i],    hl.dsp.focus({ workspace = i }))
+    hl.bind(mainMod .. " + " .. numpadNavKeysyms[i], hl.dsp.focus({ workspace = i }))
+end
+
+-- Numpad 0 instead cycles through the open workspaces on the focused
+-- monitor only ("m+1" skips empty ones and wraps around).
+hl.bind(mainMod .. " + " .. numpadKeysyms[0],    hl.dsp.focus({ workspace = "m+1" }))
+hl.bind(mainMod .. " + " .. numpadNavKeysyms[0], hl.dsp.focus({ workspace = "m+1" }))
 
 -- Example special workspace (scratchpad)
 hl.bind(mainMod .. " + S",         hl.dsp.workspace.toggle_special("magic"))
@@ -369,6 +492,12 @@ hl.bind(mainMod .. " + CTRL + right", hl.dsp.focus({ workspace = "e+1" }))
 -- Move the active window to the next/previous workspace with mainMod + CTRL + SHIFT + left/right
 hl.bind(mainMod .. " + CTRL + SHIFT + left",  hl.dsp.window.move({ workspace = "e-1" }))
 hl.bind(mainMod .. " + CTRL + SHIFT + right", hl.dsp.window.move({ workspace = "e+1" }))
+
+-- Same with vim keys: mainMod + CTRL (+ SHIFT) + H/L
+hl.bind(mainMod .. " + CTRL + H",         hl.dsp.focus({ workspace = "e-1" }))
+hl.bind(mainMod .. " + CTRL + L",         hl.dsp.focus({ workspace = "e+1" }))
+hl.bind(mainMod .. " + CTRL + SHIFT + H", hl.dsp.window.move({ workspace = "e-1" }))
+hl.bind(mainMod .. " + CTRL + SHIFT + L", hl.dsp.window.move({ workspace = "e+1" }))
 
 -- Move/resize windows with mainMod + LMB/RMB and dragging
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
@@ -392,11 +521,11 @@ hl.bind(mainMod .. " + A",     hl.dsp.exec_cmd(ipc .. "panel-toggle control-cent
 hl.bind(mainMod .. " + COMMA", hl.dsp.exec_cmd(ipc .. "settings-toggle"))
 hl.bind("ALT + TAB",           hl.dsp.exec_cmd(ipc .. "window-switcher"))
 
--- Requires playerctl
-hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       { locked = true })
-hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
-hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
-hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"),   { locked = true })
+-- Media keys via Noctalia's MPRIS control (playerctl isn't installed here)
+hl.bind("XF86AudioNext",  hl.dsp.exec_cmd(ipc .. "media next"),     { locked = true })
+hl.bind("XF86AudioPause", hl.dsp.exec_cmd(ipc .. "media toggle"),   { locked = true })
+hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd(ipc .. "media toggle"),   { locked = true })
+hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd(ipc .. "media previous"), { locked = true })
 
 
 --------------------------------
