@@ -360,6 +360,18 @@ hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 
+-- Keybind cheatsheet on the ?-key (ß on the German layout); see scripts/keybinds-help.sh
+-- Pressing it again while the cheatsheet is open closes it.
+hl.bind(mainMod .. " + ssharp", function ()
+    for _, w in ipairs(hl.get_windows()) do
+        if w.class:find("keybinds-help", 1, true) then
+            hl.dispatch(hl.dsp.window.close({ window = w }))
+            return
+        end
+    end
+    hl.dispatch(hl.dsp.exec_cmd("sh " .. os.getenv("HOME") .. "/.config/hypr/scripts/keybinds-help.sh"))
+end)
+
 -- Region screenshot (Print) is per host, see hosts/*.lua
 -- Monitor screenshots (noctalia built-in, saves to ~/Pictures)
 hl.bind("SHIFT + Print", hl.dsp.exec_cmd(ipc .. "screenshot-fullscreen"))
@@ -590,6 +602,14 @@ hl.window_rule({
 
     move  = "20 monitor_h-120",
     float = true,
+})
+
+-- Keybind cheatsheet (SUPER+ß); Chromium names the app window after the page URL
+hl.window_rule({
+    match  = { class = ".*keybinds-help.*" },
+    float  = true,
+    size   = { 1180, 660 },
+    center = true,
 })
 
 -- Noctalia settings window

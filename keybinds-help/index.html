@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Keybinds</title>
+<!-- Keybind cheatsheet, opened by scripts/keybinds-help.sh (SUPER+ß).
+     Keep the GROUPS table in sync with hyprland.lua and hosts/*.lua.
+     The URL hash names the host (#laptop / #desktop) to show host-only binds. -->
+<style>
+  :root {
+    --bg:      #0d1117;
+    --card:    #161b22;
+    --line:    #2a313c;
+    --text:    #e6edf3;
+    --muted:   #8b949e;
+    --key-bg:  #21262d;
+
+    --super:   #2dd4bf;
+    --shift:   #fbbf24;
+    --ctrl:    #f472b6;
+    --alt:     #a78bfa;
+    --fn:      #60a5fa;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 13px/1.35 "Inter", "Noto Sans", system-ui, sans-serif;
+    padding: 18px 20px;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+  h1 { font-size: 18px; font-weight: 650; }
+  .legend { display: flex; gap: 12px; color: var(--muted); font-size: 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .hint { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+  main {
+    columns: 3 300px;
+    column-gap: 14px;
+  }
+  section {
+    break-inside: avoid;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 10px 12px 8px;
+    margin-bottom: 14px;
+  }
+  h2 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    border-top: 1px solid var(--line);
+  }
+  .row:first-of-type { border-top: 0; }
+  .keys { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+  .desc { text-align: right; }
+  .desc small { display: block; color: var(--muted); font-size: 11px; }
+  .or, .plus { color: var(--muted); font-size: 11px; }
+  .or { margin: 0 3px; }
+
+  kbd {
+    font: 600 11.5px/1 "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    padding: 4px 6px 3px;
+    min-width: 20px;
+    text-align: center;
+    border-radius: 5px;
+    background: var(--key-bg);
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  kbd.mod { color: var(--c); border-color: color-mix(in srgb, var(--c) 55%, transparent);
+            background: color-mix(in srgb, var(--c) 12%, var(--key-bg)); }
+  kbd.SUPER { --c: var(--super); }
+  kbd.SHIFT { --c: var(--shift); }
+  kbd.CTRL  { --c: var(--ctrl); }
+  kbd.ALT   { --c: var(--alt); }
+  kbd.Fn    { --c: var(--fn); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Hyprland keybinds</h1>
+  <div class="legend">
+    <span><i style="background:var(--super)"></i>SUPER</span>
+    <span><i style="background:var(--shift)"></i>SHIFT</span>
+    <span><i style="background:var(--ctrl)"></i>CTRL</span>
+    <span><i style="background:var(--alt)"></i>ALT</span>
+  </div>
+  <div class="hint">Esc / any key to close</div>
+</header>
+<main id="groups"></main>
+
+<script>
+// Each row: [combos, description, note?, host?]
+// A combo is keys joined with "+"; several combos are alternatives ("or").
+// "a|b" is one key slot with alternative keys, e.g. arrows or vim keys.
+const GROUPS = [
+  { title: "Apps", accent: "#2dd4bf", rows: [
+    [["SUPER+Q"], "Terminal", "kitty"],
+    [["SUPER+E"], "File manager", "dolphin"],
+    [["SUPER+R"], "App menu", "hyprlauncher"],
+    [["SUPER+D"], "Noctalia launcher"],
+    [["SUPER+F1–F4"], "Quick-launch slot", "focus, cycle or launch"],
+    [["SUPER+SHIFT+F1–F4"], "Assign active app to slot"],
+  ]},
+  { title: "Focus & move", accent: "#60a5fa", rows: [
+    [["SUPER+←↑↓→|HJKL"], "Move focus"],
+    [["SUPER+SHIFT+←↑↓→|HJKL"], "Move window"],
+    [["SUPER+LMB", "SUPER+SHIFT+LMB"], "Drag window"],
+    [["SUPER+RMB"], "Resize window"],
+    [["ALT+TAB"], "Window switcher"],
+  ]},
+  { title: "Window state", accent: "#a78bfa", rows: [
+    [["SUPER+C"], "Close window"],
+    [["SUPER+V"], "Toggle floating"],
+    [["SUPER+P"], "Pseudo-tile"],
+    [["SUPER+T"], "Toggle split", "dwindle only"],
+    [["SUPER+SHIFT+T"], "Cycle layout", "dwindle → master → scrolling"],
+  ]},
+  { title: "Workspaces", accent: "#34d399", rows: [
+    [["SUPER+1–0"], "Go to workspace", "numpad works too"],
+    [["SUPER+SHIFT+1–0"], "Send window to workspace"],
+    [["SUPER+CTRL+←→|HL"], "Prev / next workspace"],
+    [["SUPER+CTRL+SHIFT+←→|HL"], "Send window prev / next"],
+    [["SUPER+Num0"], "Cycle workspaces", "on this monitor"],
+    [["SUPER+Scroll"], "Scroll workspaces"],
+    [["SUPER+S"], "Toggle scratchpad"],
+    [["SUPER+SHIFT+S"], "Send window to scratchpad"],
+  ]},
+  { title: "Screenshots & recording", accent: "#fbbf24", rows: [
+    [["Print", "Fn+F10"], "Region screenshot", "swappy → Nextcloud link", "laptop"],
+    [["Print"], "Region screenshot", "saved to ~/Pictures", "desktop"],
+    [["SHIFT+Print"], "Current monitor", "saved to ~/Pictures"],
+    [["CTRL+Print"], "All monitors", "saved to ~/Pictures"],
+    [["ALT+Print"], "Start / stop recording"],
+    [["ALT+SHIFT+Print"], "Record a region"],
+  ]},
+  { title: "Noctalia & system", accent: "#f472b6", rows: [
+    [["SUPER+A"], "Control center"],
+    [["SUPER+,"], "Noctalia settings"],
+    [["SUPER+SHIFT+A"], "Audio switcher", null, "desktop"],
+    [["SUPER+CTRL+A"], "Speakers ↔ headphones", null, "desktop"],
+    [["SUPER+B"], "Bitwarden", null, "desktop"],
+    [["Media keys"], "Volume, brightness, playback"],
+    [["SUPER+M"], "Exit Hyprland"],
+    [["SUPER+ß"], "This help"],
+  ]},
+];
+
+const MODS = ["SUPER", "SHIFT", "CTRL", "ALT", "Fn"];
+const host = location.hash.slice(1);
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function renderCombo(combo) {
+  const frag = document.createDocumentFragment();
+  // "SUPER+," must keep the comma key, so split on "+" only between keys
+  combo.split(/\+(?!$)/).forEach((key, i) => {
+    if (i) frag.append(el("span", "plus", "+"));
+    key.split("|").forEach((alt, j) => {
+      if (j) frag.append(el("span", "plus", "/"));
+      frag.append(el("kbd", MODS.includes(alt) ? "mod " + alt : "", alt));
+    });
+  });
+  return frag;
+}
+
+const main = document.getElementById("groups");
+for (const group of GROUPS) {
+  const rows = group.rows.filter(r => !r[3] || !host || r[3] === host);
+  if (!rows.length) continue;
+
+  const section = el("section");
+  section.style.setProperty("--accent", group.accent);
+  section.append(el("h2", null, group.title));
+
+  for (const [combos, desc, note] of rows) {
+    const row = el("div", "row");
+    const keys = el("div", "keys");
+    combos.forEach((c, i) => {
+      if (i) keys.append(el("span", "or", "or"));
+      keys.append(renderCombo(c));
+    });
+    const d = el("div", "desc", desc);
+    if (note) d.append(el("small", null, note));
+    row.append(keys, d);
+    section.append(row);
+  }
+  main.append(section);
+}
+
+addEventListener("keydown", () => window.close());
+</script>
+</body>
+</html>

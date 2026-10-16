@@ -16,7 +16,7 @@ My Hyprland setup, shared between a ThinkPad (Ubuntu) and a desktop (CachyOS). I
 
 | File | Machine | Contents |
 |---|---|---|
-| `hosts/laptop.lua` | `dominik-thinkpad` | `eDP-1` panel at 120 Hz, KDE polkit agent, Nextcloud screenshot on `Print` |
+| `hosts/laptop.lua` | `dominik-thinkpad` | `eDP-1` panel at 120 Hz, `pam_kwallet_init`, KDE polkit agent, Nextcloud screenshot on `Print` |
 | `hosts/desktop.lua` | anything else | `DP-1` + `DP-2` 1440p with VRR, `ksecretd`/`mako`/`hyprpolkitagent`, wider gaps, audio and Bitwarden binds |
 
 A host file returns a table with these optional hooks, which `hyprland.lua` calls at the right points:
