@@ -32,9 +32,12 @@ function host.config()
 end
 
 function host.autostart()
-    -- Secret Service provider (org.freedesktop.secrets), needed by Noctalia
-    -- to store calendar account credentials in kdewallet.
-    hl.exec_cmd("/usr/bin/ksecretd")
+    -- ksecretd (Secret Service provider for Noctalia, Nextcloud, ...) is
+    -- started and unlocked by pam_kwallet at login, but it blocks until
+    -- pam_kwallet_init hands it the session environment. Plasma runs that from
+    -- XDG autostart; Hyprland doesn't, so run it here. Don't start a second
+    -- ksecretd: it races the PAM one for the bus name and prompts for a password.
+    hl.exec_cmd("/usr/lib/pam_kwallet_init")
     hl.exec_cmd("mako")
     -- Polkit authentication agent; without it polkitd has no way to prompt,
     -- so privileged actions fail (e.g. shelly's GUI package operations).

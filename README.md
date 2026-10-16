@@ -17,7 +17,7 @@ My Hyprland setup, shared between a ThinkPad (Ubuntu) and a desktop (CachyOS). I
 | File | Machine | Contents |
 |---|---|---|
 | `hosts/laptop.lua` | `dominik-thinkpad` | `eDP-1` panel at 120 Hz, KDE polkit agent, Nextcloud screenshot on `Print` |
-| `hosts/desktop.lua` | anything else | `DP-1` + `DP-2` 1440p with VRR, `ksecretd`/`mako`/`hyprpolkitagent`, wider gaps, audio and Bitwarden binds |
+| `hosts/desktop.lua` | anything else | `DP-1` + `DP-2` 1440p with VRR, `mako`/`hyprpolkitagent`, wider gaps, audio and Bitwarden binds |
 
 A host file returns a table with these optional hooks, which `hyprland.lua` calls at the right points:
 
@@ -55,7 +55,7 @@ Ubuntu: `hyprpolkitagent` isn't packaged, so the laptop host uses `polkit-kde-ag
 | `hyprpolkitagent` / `polkit-kde-agent-1` | Password prompts for privileged actions |
 | `noctalia` | Bar, launcher, wallpaper, OSD, screenshots, media keys, plugin panels |
 | `mako` | Notifications (desktop) |
-| `kwallet` | `ksecretd`, the Secret Service provider |
+| `kwallet`, `kwallet-pam`, `socat` | `ksecretd`, the Secret Service provider, started and unlocked by PAM at login (`pam_kwallet_init` needs `socat`) |
 | `kitty`, `dolphin` | Terminal (`SUPER + Q`) and file manager (`SUPER + E`) |
 | `gpu-screen-recorder`, `slurp`, `jq` | Screen recording script |
 | `libnotify` | `notify-send`, used by the scripts |
