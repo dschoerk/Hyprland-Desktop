@@ -475,11 +475,43 @@ for key, direction in pairs(vimKeys) do
     hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ direction = direction }))
 end
 
--- Switch workspaces with mainMod + [0-9]
+-- The visible windows of a workspace in creation order, plus the index of
+-- the focused one among them (nil if focus is elsewhere).
+local function workspaceWindowCycle(ws)
+    local windows = {}
+    for _, w in ipairs(hl.get_workspace_windows(ws)) do
+        if w.mapped and not w.hidden then windows[#windows + 1] = w end
+    end
+    table.sort(windows, function(a, b) return a.stable_id < b.stable_id end)
+
+    local active = hl.get_active_window()
+    local activeAddr = active and active.address
+    for idx, w in ipairs(windows) do
+        if w.address == activeAddr then return windows, idx end
+    end
+    return windows, nil
+end
+
+-- Switch to workspace i; if it is already the active one, cycle focus
+-- through its windows instead (wrapping around).
+local function focusOrCycleWorkspace(i)
+    local ws = hl.get_active_workspace()
+    if not ws or ws.id ~= i then
+        hl.dispatch(hl.dsp.focus({ workspace = i }))
+        return
+    end
+
+    local windows, current = workspaceWindowCycle(i)
+    if #windows < 2 then return end
+    local nextIndex = current and current % #windows + 1 or 1
+    hl.dispatch(hl.dsp.focus({ window = windows[nextIndex] }))
+end
+
+-- Switch workspaces with mainMod + [0-9] (repeat to cycle its windows)
 -- Move active window to a workspace with mainMod + SHIFT + [0-9]
 for i = 1, 10 do
     local key = i % 10 -- 10 maps to key 0
-    hl.bind(mainMod .. " + " .. key,         hl.dsp.focus({ workspace = i }))
+    hl.bind(mainMod .. " + " .. key,         function() focusOrCycleWorkspace(i) end)
     hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
 end
 
@@ -500,8 +532,8 @@ local numpadNavKeysyms = {
     [0] = "KP_Insert",
 }
 for i = 1, 9 do
-    hl.bind(mainMod .. " + " .. numpadKeysyms[i],    hl.dsp.focus({ workspace = i }))
-    hl.bind(mainMod .. " + " .. numpadNavKeysyms[i], hl.dsp.focus({ workspace = i }))
+    hl.bind(mainMod .. " + " .. numpadKeysyms[i],    function() focusOrCycleWorkspace(i) end)
+    hl.bind(mainMod .. " + " .. numpadNavKeysyms[i], function() focusOrCycleWorkspace(i) end)
 end
 
 -- Numpad 0 instead cycles through the open workspaces on the focused
