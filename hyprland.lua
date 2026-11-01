@@ -267,9 +267,6 @@ hl.workspace_rule({ workspace = "s[true]", gaps_out = 30 })
 hl.config({
     dwindle = {
         preserve_split = true, -- You probably want this
-
-        -- Keep at 1: the inset look comes from the s[true] gaps_out rule.
-        special_scale_factor = 1,
     },
 })
 
@@ -277,9 +274,6 @@ hl.config({
 hl.config({
     master = {
         new_status = "master",
-
-        -- Mirror the dwindle setting (see the s[true] gaps_out rule).
-        special_scale_factor = 1,
     },
 })
 
