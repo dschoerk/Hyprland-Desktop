@@ -501,13 +501,18 @@ local function focusOrCycleWorkspace(i)
     hl.dispatch(hl.dsp.focus({ window = windows[nextIndex] }))
 end
 
--- Switch workspaces with mainMod + [0-9] (repeat to cycle its windows)
+-- Switch workspaces with mainMod + [1-9] (repeat to cycle its windows)
 -- Move active window to a workspace with mainMod + SHIFT + [0-9]
 for i = 1, 10 do
     local key = i % 10 -- 10 maps to key 0
-    hl.bind(mainMod .. " + " .. key,         function() focusOrCycleWorkspace(i) end)
+    if i < 10 then
+        hl.bind(mainMod .. " + " .. key, function() focusOrCycleWorkspace(i) end)
+    end
     hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
 end
+
+-- mainMod + 0 jumps back to the previously focused workspace (toggles)
+hl.bind(mainMod .. " + 0", hl.dsp.focus({ workspace = "previous" }))
 
 -- Same workspace switching, but reachable from the numpad.
 -- Bound to both the digit keysyms (Num Lock on) and the navigation
